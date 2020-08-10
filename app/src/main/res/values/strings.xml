@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">GooglePlaces</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="title_activity_maps">GooglePlaces</string>
     <string name="goole_api_key">AIzaSyBnufHYWcdgzug0xTCvuRt9QF1z3Wy_k68</string>
 </resources>

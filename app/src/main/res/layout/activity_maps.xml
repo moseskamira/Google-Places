@@ -7,14 +7,13 @@
     android:orientation="vertical"
     tools:context=".MapsActivity">
 
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_margin="8dp"
         android:orientation="vertical">
 
-        <LinearLayout
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
@@ -24,9 +23,12 @@
                 style="@style/MaterialSearchBarLight"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:mt_hint="Search Location Here"
+                android:layout_margin="16dp"
+                app:mt_placeholder="Search Location Here"
                 app:mt_maxSuggestionsCount="10"
-                app:mt_speechMode="true"
+                app:mt_speechMode="false"
+                android:elevation="5dp"
+                android:outlineProvider="bounds"
                 app:mt_navIconEnabled="true"/>
 
             <fragment
@@ -36,7 +38,14 @@
                 android:layout_height="match_parent"
                 tools:context=".MapsActivity"/>
 
-        </LinearLayout>
+            <Button
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/submit_location_tbn"
+                android:layout_alignParentBottom="true"
+                android:text="Submit"/>
+
+        </RelativeLayout>
 
     </LinearLayout>
 
