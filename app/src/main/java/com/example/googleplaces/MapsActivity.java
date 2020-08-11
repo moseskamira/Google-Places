@@ -10,11 +10,15 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -37,13 +41,18 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.libraries.places.api.Places;
 import com.google.android.libraries.places.api.model.AutocompletePrediction;
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken;
+import com.google.android.libraries.places.api.model.Place;
 import com.google.android.libraries.places.api.model.TypeFilter;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
+import com.google.android.libraries.places.api.net.FetchPlaceResponse;
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse;
 import com.google.android.libraries.places.api.net.PlacesClient;
 import com.mancj.materialsearchbar.MaterialSearchBar;
+import com.mancj.materialsearchbar.adapter.SuggestionsAdapter;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
@@ -62,6 +71,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private AutocompleteSessionToken autocompleteSessionToken;
 
     private List<String> suggestionsList;
+    private List<AutocompletePrediction> predictionList;
+
     private Button submitBtn;
 
 
@@ -77,7 +88,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (!Places.isInitialized()) {
             Places.initialize(getApplicationContext(), api_key);
         }
-        placesClient = Places.createClient(this);
+        placesClient = Places.createClient(getApplicationContext());
         autocompleteSessionToken = AutocompleteSessionToken.newInstance();
 
         setSearchBarListener();
@@ -110,6 +121,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         myGoogleMap = googleMap;
         myGoogleMap.setMyLocationEnabled(true);
         myGoogleMap.getUiSettings().setMyLocationButtonEnabled(true);
+        myGoogleMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                if (materialSearchBar.isSuggestionsVisible())
+                    materialSearchBar.clearSuggestions();
+
+                if (materialSearchBar.isSearchEnabled())
+                    materialSearchBar.disableSearch();
+
+                return false;
+            }
+        });
 
         checkLocationSettings();
     }
@@ -121,7 +144,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         LocationSettingsRequest.Builder locationSettingsBuilder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(locationRequest);
-
         SettingsClient settingsClient = LocationServices.getSettingsClient(MapsActivity.this);
         Task<LocationSettingsResponse> task = settingsClient.checkLocationSettings(locationSettingsBuilder.build());
         task.addOnSuccessListener(MapsActivity.this, new OnSuccessListener<LocationSettingsResponse>() {
@@ -243,8 +265,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.d("TEXTCHANGED", s.toString());
+                Log.d("TOKEN", autocompleteSessionToken.toString());
 
-                final FindAutocompletePredictionsRequest predictionRequest = FindAutocompletePredictionsRequest.builder()
+                final FindAutocompletePredictionsRequest predictionRequest = FindAutocompletePredictionsRequest
+                        .builder()
+                        .setCountry("ug")
                         .setTypeFilter(TypeFilter.ADDRESS)
                         .setSessionToken(autocompleteSessionToken)
                         .setQuery(s.toString())
@@ -254,13 +280,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             @Override
                             public void onComplete(@NonNull Task<FindAutocompletePredictionsResponse> task) {
                                 if (task.isSuccessful()) {
+                                    Log.d("TASKSUCCESSFULL", "HERE");
                                     FindAutocompletePredictionsResponse predictionResponse = task.getResult();
                                     if (predictionResponse != null) {
-                                        List<AutocompletePrediction> predictionList = predictionResponse.getAutocompletePredictions();
+                                        Log.d("PREDRESP", "NOTNULL");
+                                        predictionList = predictionResponse.getAutocompletePredictions();
                                         if (predictionList.isEmpty()) {
                                             Log.d("EMPTY", "PRED");
 
                                         } else {
+                                            Log.d("PREDLIST", "NOTEMPTY");
                                             suggestionsList = new ArrayList<>();
                                             for (AutocompletePrediction prediction : predictionList) {
                                                 suggestionsList.add(prediction.getFullText(null).toString());
@@ -268,19 +297,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                                 Log.d("PRED2", prediction.getFullText(null).toString());
 
                                             }
-                                            runOnUiThread(new Runnable() {
 
+                                            new Handler().postDelayed(new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    materialSearchBar.updateLastSuggestions(suggestionsList);
                                                     if (!materialSearchBar.isSuggestionsVisible()) {
                                                         materialSearchBar.showSuggestionsList();
-
                                                     }
                                                 }
-                                            });
+                                            }, 1000);
+
+//                                            runOnUiThread(new Runnable() {
+//
+//                                                @Override
+//                                                public void run() {
+//                                                    materialSearchBar.updateLastSuggestions(suggestionsList);
+//                                                    if (!materialSearchBar.isSuggestionsVisible()) {
+//                                                        materialSearchBar.showSuggestionsList();
+//
+//                                                    }
+//                                                }
+//                                            });
                                         }
+                                    }else {
+                                        Log.d("PREDRESP", "NULL");
                                     }
+                                }else {
+                                    Log.d("TASKUNSUC", "HERE");
+
                                 }
                             }
                         });
@@ -291,6 +335,76 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
+
+        materialSearchBar.setSuggestionsClickListener(new SuggestionsAdapter.OnItemViewClickListener() {
+            @Override
+            public void OnItemClickListener(int position, View v) {
+                if (position >= predictionList.size()) {
+                    return;
+                }
+                AutocompletePrediction clickedPrediction = predictionList.get(position);
+                String selectedSuggestion = materialSearchBar.getLastSuggestions().get(position).toString();
+                materialSearchBar.setText(selectedSuggestion);
+
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        materialSearchBar.clearSuggestions();
+
+                    }
+                }, 1000);
+
+                clearKeyBoardAndMapPlace(clickedPrediction);
+            }
+
+            @Override
+            public void OnItemDeleteListener(int position, View v) {
+
+            }
+        });
+    }
+
+    private void clearKeyBoardAndMapPlace(AutocompletePrediction pred) {
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (inputMethodManager != null) {
+            inputMethodManager.hideSoftInputFromWindow(materialSearchBar.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+
+            String placeId = pred.getPlaceId();
+            List<Place.Field> placeField = Arrays.asList(Place.Field.LAT_LNG);
+            FetchPlaceRequest fetchPlaceRequest = FetchPlaceRequest.builder(placeId, placeField)
+                    .build();
+            placesClient.fetchPlace(fetchPlaceRequest).addOnSuccessListener(new OnSuccessListener<FetchPlaceResponse>() {
+                @Override
+                public void onSuccess(FetchPlaceResponse fetchPlaceResponse) {
+                    Place myPlace = fetchPlaceResponse.getPlace();
+                    Log.d("MYPLACENAME", myPlace.getName());
+                    LatLng placeToMap = myPlace.getLatLng();
+                    if (placeToMap != null) {
+
+                        myGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(placeToMap, DEFAULT_ZOOM));
+                    }
+
+
+                }
+            })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            if (e instanceof ApiException) {
+                                ApiException apiException = (ApiException) e;
+                                apiException.printStackTrace();
+                                int statusCode = apiException.getStatusCode();
+                                Log.d("ERRORMSG", e.getMessage());
+
+
+                            }
+
+                        }
+                    });
+
+
+        }
+
     }
 
 }
